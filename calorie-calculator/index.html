@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 영양사 영양 코치</title>
+    <!-- 폰트: 넥슨 고딕 혹은 Pretendard 등 깔끔한 폰트 사용 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <!-- 폰트 어썸 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-shape shape1"></div>
+    <div class="background-shape shape2"></div>
+    <div class="background-shape shape3"></div>
+
+    <main class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-leaf"></i>
+                <h1>NutriCoach AI</h1>
+            </div>
+            <p class="subtitle">당신의 개인 영양사, 똑똑하게 식단을 분석해드려요.</p>
+        </header>
+
+        <section class="content-section">
+            <!-- 사용자 프로필 입력부 -->
+            <div class="card profile-card">
+                <h2><i class="fa-regular fa-id-card"></i> 신체 정보</h2>
+                
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="height">키 (cm)</label>
+                        <input type="number" id="height" placeholder="예: 175" value="175">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="weight">몸무게 (kg)</label>
+                        <input type="number" id="weight" placeholder="예: 70" value="70">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="age">나이 (세)</label>
+                        <input type="number" id="age" placeholder="예: 30" value="30">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="gender">성별</label>
+                        <select id="gender">
+                            <option value="male" selected>남성</option>
+                            <option value="female">여성</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group full-width">
+                        <label for="activity">활동량</label>
+                        <select id="activity">
+                            <option value="1.2">거의 운동을 하지 않음 (좌식 생활)</option>
+                            <option value="1.375">가벼운 활동 (주 1~3일 운동)</option>
+                            <option value="1.55" selected>보통 활동 (주 3~5일 운동)</option>
+                            <option value="1.725">매우 활동적 (주 6~7일 운동)</option>
+                            <option value="1.9">운동선수 수준의 활동</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 식사 입력부 -->
+            <div class="card meal-card">
+                <h2><i class="fa-solid fa-utensils"></i> 식사 기록</h2>
+                <div class="input-group full-width">
+                    <label for="meal-input">오늘 어떤 음식을 드셨나요? 편하게 적어주세요. <br><span class="label-desc">예: 치즈버거 세트 먹고 제로콜라 마셨어. 간식으로 초코파이도 하나.</span></label>
+                    <textarea id="meal-input" rows="4" placeholder="당신의 식사를 기록해보세요..."></textarea>
+                </div>
+                
+                <button id="analyze-btn" class="primary-btn">
+                    <span><i class="fa-solid fa-robot"></i> AI 분석하기</span>
+                    <div class="loader hidden" id="btn-loader"></div>
+                </button>
+            </div>
+        </section>
+
+        <!-- 분석 결과 컨테이너 (초기에는 숨김) -->
+        <section id="result-section" class="result-section hidden">
+            <div class="card result-card">
+                <div class="result-header">
+                    <h2><i class="fa-solid fa-chart-pie"></i> 분석 결과</h2>
+                    <span id="status-badge" class="badge">상태</span>
+                </div>
+
+                <div class="calorie-summary">
+                    <div class="cal-box target">
+                        <span class="cal-label">목표 (TDEE)</span>
+                        <div class="cal-value"><span id="target-cal">0</span> kcal</div>
+                    </div>
+                    <div class="cal-box ingested">
+                        <span class="cal-label">섭취</span>
+                        <div class="cal-value"><span id="ingested-cal">0</span> kcal</div>
+                    </div>
+                    <div class="cal-box diff">
+                        <span class="cal-label">남은 칼로리</span>
+                        <div class="cal-value"><span id="remaining-cal">0</span> kcal</div>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-label">
+                        <span>일일 권장량 대비 섭취량</span>
+                        <span id="progress-percent">0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                </div>
+
+                <div class="meal-list-container">
+                    <h3>인식된 음식 항목</h3>
+                    <ul id="meal-list" class="meal-list">
+                        <!-- JS로 동적 렌더링 됨 -->
+                    </ul>
+                </div>
+
+                <div class="coach-feedback">
+                    <h3><i class="fa-solid fa-user-doctor"></i> AI 전문 영양사 피드백</h3>
+                    <p id="coach-text">분석 결과를 기다리고 있습니다...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
