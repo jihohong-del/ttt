@@ -13,74 +13,90 @@ function calculate_tdee(height, weight, age, gender, activity_multiplier) {
 
 /**
  * ---------------------------------------------------------
- * 🔴 MOCK AI SERVICE (가상 AI 응답 서비스)
+ * 🟢 LOCAL JSON DATA SERVICE (엑셀 변환 데이터 사용)
  * ---------------------------------------------------------
- * 실제 운영 환경에서는 이 함수 내부를 변경하여 
- * OpenAI API (GPT-4) 혹은 Google Gemini API를 호출하도록 
- * 코드를 교체하시면 됩니다.
- * 
- * prompt 예시:
- * `사용자 프로필: 키 ${height}cm, 체중 ${weight}kg, 성별 ${gender}, 나이 ${age}, 활동량 ${activity_multiplier}
- *  사용자 식사 기록: ${mealText}
- *  다음 JSON 형식으로 응답해: {"meal_analysis":...}`
+ * combined_food_data.json 파일을 불러와서 사용자 입력 텍스트와 매칭합니다.
  */
-async function mockAIAnalysis(mealText, targetCals) {
-    // 실제 API 호출을 흉내내기 위해 1.5초 대기
-    await new Promise(resolve => setTimeout(resolve, 1500));
+async function localDataAnalysis(mealText, targetCals) {
+    let foodDatabase = [];
 
-    // 단순 키워드 매칭으로 가상의 결과 생성
-    const keywords = ['피자', '콜라', '햄버거', '치즈버거', '초코파이', '샐러드', '닭가슴살', '커피', '밥', '김치찌개'];
-    let ingestedCals = 0;
-    let items = [];
-
-    // 입력 텍스트에 따라 가상의 분석 정보 생성
-    if (mealText.includes('버거') && mealText.includes('콜라') && mealText.includes('초코파이')) {
-        items = [
-            { item: "치즈버거 세트", amount: "1인분", calories: 850 },
-            { item: "제로콜라", amount: "1컵", calories: 0 },
-            { item: "초코파이", amount: "1개", calories: 170 }
-        ];
-        ingestedCals = 1020;
-    } else if (mealText.includes('샐러드') || mealText.includes('닭가슴살')) {
-        items = [
-            { item: "닭가슴살 샐러드", amount: "1접시", calories: 350 },
-            { item: "발사믹 드레싱", amount: "2스푼", calories: 50 }
-        ];
-        ingestedCals = 400;
-    } else {
-        // 기본 랜덤 생성 (데모용)
-        items = [
-            { item: "일반 식사 (추정)", amount: "1식", calories: 700 }
-        ];
-        ingestedCals = 700;
+    try {
+        // 1. JSON 파일 불러오기
+        const response = await fetch('./combined_food_data.json');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        foodDatabase = await response.json();
+    } catch (error) {
+        console.error("데이터 로드 실패:", error);
+        return {
+            "meal_analysis": [{ item: "데이터 연결 오류", amount: "0", calories: 0 }],
+            "total_ingested_calories": 0,
+            "daily_target_calories": targetCals,
+            "status": "오류",
+            "coach_feedback": "combined_food_data.json 파일을 불러오는 데 실패했습니다. 용량이 너무 크거나 파일이 존재하지 않을 수 있습니다."
+        };
     }
 
-    // 상태 및 피드백 로직
+    // 2. 사용자가 입력한 텍스트에서 음식 찾기
+    const matchedItems = [];
+    let ingestedCals = 0;
+
+    // 간단한 키워드 매칭 로직 (띄어쓰기 무시, 소문자 변환 후 검색)
+    const normalizedInput = mealText.replace(/\s+/g, '').toLowerCase();
+
+    foodDatabase.forEach(food => {
+        // 엑셀의 헤더(열 이름)를 유연하게 지원합니다.
+        const foodName = food["음식명"] || food["name"] || food["식품명"] || "";
+        const foodAmount = food["추정 섭취량"] || food["amount"] || food["영양성분함량기준량"] || "1인분";
+        const calories = parseFloat(food["칼로리(kcal)"] || food["calories"] || 0);
+
+        // 사용자의 식사 기록에 이 음식 이름이 포함되어 있는지 확인
+        if (foodName && normalizedInput.includes(foodName.replace(/\s+/g, '').toLowerCase())) {
+            matchedItems.push({
+                item: foodName,
+                amount: foodAmount,
+                calories: calories
+            });
+            ingestedCals += calories;
+        }
+    });
+
+    // 만약 매칭된 음식이 하나도 없다면
+    if (matchedItems.length === 0) {
+        return {
+            "meal_analysis": [{ item: "인식된 음식 없음", amount: "-", calories: 0 }],
+            "total_ingested_calories": 0,
+            "daily_target_calories": targetCals,
+            "status": "알 수 없음",
+            "coach_feedback": "입력하신 식사 내용에서 데이터베이스에 등록된 음식을 찾지 못했습니다. 데이터베이스에 해당 음식이 있는지 확인해주세요."
+        };
+    }
+
+    // 3. 상태 및 피드백 생성
     const remainingCals = targetCals - ingestedCals;
     let status = "적정";
     let feedback = "";
 
     if (ingestedCals > targetCals * 0.5) {
         status = "과다";
-        feedback = `한 끼 식사로 너무 많은 칼로리를 섭취하셨습니다 (일일 권장량의 ${Math.round((ingestedCals/targetCals)*100)}%). 가벼운 산책을 통해 소화를 돕고, 다음 식사는 샐러드나 탄수화물을 줄인 식단으로 조절하시는 것을 권장합니다.`;
+        feedback = `한 끼 식사로 너무 많은 칼로리를 섭취하셨습니다 (일일 권장량의 ${Math.round((ingestedCals / targetCals) * 100)}%). 가벼운 산책을 통해 소화를 돕고, 다음 식사는 가볍게 드시는 것을 권장합니다.`;
     } else if (ingestedCals < targetCals * 0.1) {
         status = "부족";
-        feedback = "권장 칼로리에 비해 식사량이 너무 적습니다. 균형 잡힌 영양소 섭취를 위해 단백질과 식이섬유가 풍부한 간식을 보충해주세요.";
+        feedback = "권장 칼로리에 비해 식사량이 적습니다. 영양소 보충을 위해 간식을 챙겨 드세요.";
     } else {
         status = "적정";
-        feedback = "좋습니다! 한 끼 식사로 매우 적절한 양과 칼로리를 섭취하셨습니다. 현재의 식습관을 잘 유지해주세요. 식후 가벼운 스트레칭이나 걷기는 소화에 큰 도움이 됩니다.";
+        feedback = "좋습니다! 한 끼 식사로 매우 적절한 양과 칼로리를 섭취하셨습니다. 현재의 식습관을 잘 유지해주세요.";
     }
 
-    // 목표 JSON 포맷 형태로 반환
     return {
-        "meal_analysis": items,
+        "meal_analysis": matchedItems,
         "total_ingested_calories": ingestedCals,
         "daily_target_calories": targetCals,
         "status": status,
         "coach_feedback": feedback
     };
 }
-
 
 /**
  * UI Interaction & Event Listeners
@@ -124,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 3. UI 렌더링
             renderResults(response, tdee);
-            
+
             // 결과 섹션 표시 및 스크롤 유도
             resultSection.classList.remove('hidden');
             setTimeout(() => {
@@ -146,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 숫자 업데이트
         document.getElementById('target-cal').innerText = Math.round(tdee).toLocaleString();
         document.getElementById('ingested-cal').innerText = data.total_ingested_calories.toLocaleString();
-        
+
         const remaining = Math.round(tdee - data.total_ingested_calories);
         document.getElementById('remaining-cal').innerText = remaining.toLocaleString();
 
@@ -161,13 +177,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // 프로그래스바 업데이트
         const percentage = Math.min((data.total_ingested_calories / tdee) * 100, 100).toFixed(1);
         document.getElementById('progress-percent').innerText = `${percentage}%`;
-        
+
         const progressFill = document.getElementById('progress-fill');
         progressFill.style.width = `${percentage}%`;
         progressFill.className = 'progress-fill'; // reset
-        
+
         // 하루 권장량의 1/3을 한 끼로 가정
-        const mealRatio = data.total_ingested_calories / (tdee / 3); 
+        const mealRatio = data.total_ingested_calories / (tdee / 3);
         if (mealRatio > 1.2) {
             progressFill.classList.add('over');
         } else if (mealRatio > 0.8) {
@@ -179,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 식사 리스트 렌더링
         const mealList = document.getElementById('meal-list');
         mealList.innerHTML = ''; // clear existing
-        
+
         data.meal_analysis.forEach(item => {
             const li = document.createElement('li');
             li.className = 'meal-item';
