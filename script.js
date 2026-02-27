@@ -105,6 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const imagePreviewContainer = document.getElementById('image-preview-container');
     const imagePreview = document.getElementById('image-preview');
     const removeImgBtn = document.getElementById('remove-img-btn');
+    const mealInput = document.getElementById('meal-input');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const resultSection = document.getElementById('result-section');
+    const btnLoader = document.getElementById('btn-loader');
 
     // 카메라 버튼 클릭 시 파일 선택창 열기
     cameraBtn.addEventListener('click', () => {
