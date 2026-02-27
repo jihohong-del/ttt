@@ -213,7 +213,14 @@ async function analyzeImageWithGemini(file) {
         });
 
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
+            let errorMessage = `HTTP Error ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error?.message || errorMessage;
+            } catch (e) {
+                // JSON 파싱 실패 시 기본 에러 메시지 유지
+            }
+            throw new Error(errorMessage);
         }
 
         const result = await response.json();
@@ -228,8 +235,8 @@ async function analyzeImageWithGemini(file) {
         }
 
     } catch (error) {
-        console.error("Gemini API Error:", error);
-        alert("사진 분석 중 오류가 발생했습니다. 직접 입력해 주시거나 다시 시도해 주세요.");
+        console.error("Gemini API Error details:", error);
+        alert(`사진 분석 중 오류가 발생했습니다.\n상세내용: ${error.message}\n\n직접 입력해 주시거나 다시 시도해 주세요.`);
         mealInput.placeholder = "분석 실패: 직접 입력을 권장합니다.";
     } finally {
         analyzeBtn.disabled = false;
