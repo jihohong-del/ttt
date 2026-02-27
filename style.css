@@ -13,6 +13,9 @@
     --border-radius: 20px;
     --shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
     --shadow-hover: 0 15px 50px -12px rgba(0, 0, 0, 0.12);
+    --status-proper: #10B981;
+    --status-excessive: #EF4444;
+    --status-insufficient: #F59E0B;
 }
 
 * {

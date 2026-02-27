@@ -313,7 +313,24 @@ function renderResults(data) {
 
     const statusBadge = document.getElementById('status-badge');
     statusBadge.textContent = data.status;
-    statusBadge.className = 'badge ' + (data.status === '적정' ? 'success' : (data.status === '부족' ? 'warning' : 'danger'));
+
+    // 상태에 따른 클래스 정리 및 적용
+    const resultCard = document.querySelector('.result-card');
+    resultCard.classList.remove('proper', 'excessive', 'insufficient');
+
+    let statusClass = '';
+    if (data.status === '적정') {
+        statusClass = 'success';
+        resultCard.classList.add('proper');
+    } else if (data.status === '과다') {
+        statusClass = 'danger';
+        resultCard.classList.add('excessive');
+    } else if (data.status === '부족') {
+        statusClass = 'warning';
+        resultCard.classList.add('insufficient');
+    }
+
+    statusBadge.className = 'badge ' + statusClass;
 
     const mealList = document.getElementById('meal-list');
     mealList.innerHTML = '';
