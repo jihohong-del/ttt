@@ -171,12 +171,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // UI Update
         renderResults(analysis);
+
+        // 4. 식사 내역에 자동 추가 (분석 성공 시)
+        if (analysis.total_ingested_calories > 0) {
+            saveMealToLog(mealText || "이미지 분석 식사", analysis.total_ingested_calories);
+        }
+
         resultSection.classList.remove('hidden');
         resultSection.scrollIntoView({ behavior: 'smooth' });
 
         btnLoader.classList.add('hidden');
         analyzeBtn.disabled = false;
     });
+
+    // 앱 시작 시 기존 기록 불러오기
+    loadMealLog();
 });
 
 /**
@@ -319,4 +328,95 @@ function renderResults(data) {
     });
 
     document.getElementById('coach-text').textContent = data.coach_feedback;
+}
+
+/**
+ * 📝 식사 내역 관리 기능 (로컬 스토리지 이용)
+ */
+function saveMealToLog(name, calories) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // YYYY-MM-DD 형식의 오늘 날짜
+    const dateStr = now.toISOString().split('T')[0];
+
+    const newLog = {
+        id: Date.now(),
+        date: dateStr,
+        name: name,
+        calories: Math.round(calories),
+        time: timeStr
+    };
+
+    // 기존 기록 가져오기
+    let logs = JSON.parse(localStorage.getItem('MEAL_LOGS') || '[]');
+
+    // 오늘 날짜인 것만 유지 (새로운 날이면 초기화 효과)
+    logs = logs.filter(log => log.date === dateStr);
+
+    logs.push(newLog);
+    localStorage.setItem('MEAL_LOGS', JSON.stringify(logs));
+
+    renderMealLog();
+}
+
+function loadMealLog() {
+    renderMealLog();
+}
+
+function renderMealLog() {
+    const historyList = document.getElementById('history-list');
+    const totalBadge = document.getElementById('total-consumed-badge');
+    const emptyMsg = document.querySelector('.empty-msg');
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+
+    let logs = JSON.parse(localStorage.getItem('MEAL_LOGS') || '[]');
+    // 오늘 기록만 필터링
+    logs = logs.filter(log => log.date === dateStr);
+
+    if (logs.length === 0) {
+        historyList.innerHTML = '';
+        emptyMsg.classList.remove('hidden');
+        totalBadge.textContent = '총 0 kcal';
+        return;
+    }
+
+    emptyMsg.classList.add('hidden');
+    historyList.innerHTML = '';
+
+    let totalCals = 0;
+
+    // 시간 역순으로 표시 (최신이 위로)
+    logs.slice().reverse().forEach(log => {
+        totalCals += log.calories;
+        const li = document.createElement('li');
+        li.className = 'history-item';
+        li.innerHTML = `
+            <div class="history-info">
+                <span class="history-name">${log.name}</span>
+                <span class="history-time"><i class="fa-regular fa-clock"></i> ${log.time}</span>
+            </div>
+            <div class="history-calories">
+                <span class="cal-tag">${log.calories.toLocaleString()} kcal</span>
+                <button class="delete-log-btn" onclick="deleteHistoryItem(${log.id})">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        `;
+        historyList.appendChild(li);
+    });
+
+    totalBadge.textContent = `총 ${totalCals.toLocaleString()} kcal`;
+}
+
+function deleteHistoryItem(id) {
+    if (!confirm('이 기록을 삭제하시겠습니까?')) return;
+
+    let logs = JSON.parse(localStorage.getItem('MEAL_LOGS') || '[]');
+    logs = logs.filter(log => log.id !== id);
+    localStorage.setItem('MEAL_LOGS', JSON.stringify(logs));
+
+    renderMealLog();
 }

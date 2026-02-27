@@ -146,6 +146,22 @@
                 </div>
             </div>
         </section>
+        <!-- 오늘의 식사 기록 섹션 -->
+        <section id="daily-log-section" class="daily-log-section">
+            <div class="card log-card">
+                <div class="log-header">
+                    <h2><i class="fa-solid fa-clock-rotate-left"></i> 오늘의 식사 내역</h2>
+                    <span id="total-consumed-badge" class="badge secondary">총 0 kcal</span>
+                </div>
+
+                <div id="meal-history-container" class="meal-history-container">
+                    <p class="empty-msg">아직 기록된 식사가 없습니다.</p>
+                    <ul id="history-list" class="history-list">
+                        <!-- JS로 동적 렌더링 됨 -->
+                    </ul>
+                </div>
+            </div>
+        </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
