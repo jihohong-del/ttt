@@ -203,8 +203,13 @@ async function analyzeImageWithGemini(file) {
     const originalBtnHTML = analyzeBtn.innerHTML;
     analyzeBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin"></i> 사진 분석 중...</span>';
 
-    // 시도할 후보 모델 리스트 (쿼터 문제 해결을 위한 폴백)
-    const models = ["gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-2.0-flash"];
+    // 시도할 후보 모델 리스트 (2026년 기준 가용성 높은 모델들)
+    const models = [
+        { name: "gemini-2.0-flash", version: "v1" },
+        { name: "gemini-1.5-flash", version: "v1" },
+        { name: "gemini-1.5-flash-8b", version: "v1beta" },
+        { name: "gemini-2.0-flash-lite-preview", version: "v1beta" }
+    ];
     let success = false;
     let lastError = "";
 
@@ -213,10 +218,9 @@ async function analyzeImageWithGemini(file) {
         const base64Content = base64Data.split(',')[1];
         const mimeType = file.type;
 
-        for (const modelName of models) {
+        for (const model of models) {
             try {
-                // v1beta가 보통 호환성이 더 넓습니다.
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/${model.version}/models/${model.name}:generateContent?key=${GEMINI_API_KEY}`;
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -243,7 +247,7 @@ async function analyzeImageWithGemini(file) {
                 } else {
                     const errorData = await response.json();
                     lastError = errorData.error?.message || `HTTP Error ${response.status}`;
-                    console.warn(`${modelName} 시도 실패:`, lastError);
+                    console.warn(`${model.name} (${model.version}) 시도 실패:`, lastError);
 
                     // 쿼터나 차단 관련 에러면 즉시 중단하고 알림
                     if (lastError.includes("leak") || lastError.includes("API_KEY_INVALID")) {
@@ -253,17 +257,21 @@ async function analyzeImageWithGemini(file) {
                 }
             } catch (innerError) {
                 lastError = innerError.message;
-                console.warn(`${modelName} 호출 중 예외 발생:`, lastError);
+                console.warn(`${model.name} 호출 중 예외 발생:`, lastError);
             }
         }
 
         if (!success) {
-            throw new Error(lastError || "모든 AI 모델 분석 시도에 실패했습니다.");
+            let userActionMessage = "모든 AI 모델 분석 시도에 실패했습니다.";
+            if (lastError.includes("limit: 0") || lastError.includes("Quota")) {
+                userActionMessage = `[할당량 부족] 구글 AI Studio(aistudio.google.com)에서 'Billing'을 연결하거나, 다른 구글 계정으로 새 API 키를 발급받아 보세요. (현재 계정의 무료 사용량이 '0'으로 설정되어 있습니다.)`;
+            }
+            throw new Error(userActionMessage);
         }
 
     } catch (error) {
         console.error("Gemini API Error details:", error);
-        alert(`사진 분석 중 오류가 발생했습니다.\n상세내용: ${error.message}\n\n도움말: 구글 AI 스튜디오에서 API 키의 쿼터(제한)가 설정되어 있는지 확인해 주세요.`);
+        alert(`사진 분석 중 문제가 발생했습니다.\n\n${error.message}`);
         mealInput.placeholder = "분석 실패: 직접 입력을 권장합니다.";
     } finally {
         analyzeBtn.disabled = false;
