@@ -426,6 +426,24 @@ function renderMealLog() {
     });
 
     totalBadge.textContent = `총 ${totalCals.toLocaleString()} kcal`;
+
+    // 🌟 추가: 총 칼로리에 따른 색상 동기화
+    const height = parseFloat(document.getElementById('height').value);
+    const weight = parseFloat(document.getElementById('weight').value);
+    const age = parseInt(document.getElementById('age').value);
+    const gender = document.getElementById('gender').value;
+    const activity = parseFloat(document.getElementById('activity').value);
+    const targetCals = calculate_tdee(height, weight, age, gender, activity);
+
+    totalBadge.classList.remove('success', 'warning', 'danger', 'secondary');
+
+    if (totalCals > targetCals * 1.1) {
+        totalBadge.classList.add('danger'); // 과다
+    } else if (totalCals < targetCals * 0.8) {
+        totalBadge.classList.add('warning'); // 부족
+    } else {
+        totalBadge.classList.add('success'); // 적정
+    }
 }
 
 function deleteHistoryItem(id) {
