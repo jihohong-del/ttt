@@ -183,7 +183,18 @@ document.addEventListener('DOMContentLoaded', () => {
  * 📸 Gemini Vision API를 이용한 실제 이미지 분석
  */
 async function analyzeImageWithGemini(file) {
-    const GEMINI_API_KEY = "AIzaSyCMSZZp8kI88hP_GY_Ul3gpJWK1i_7i-LA";
+    let GEMINI_API_KEY = localStorage.getItem('GEMINI_API_KEY');
+
+    if (!GEMINI_API_KEY) {
+        GEMINI_API_KEY = prompt("Gemini API 키가 필요합니다. 키를 입력해주세요 (한 번 입력하면 저장됩니다):");
+        if (GEMINI_API_KEY) {
+            localStorage.setItem('GEMINI_API_KEY', GEMINI_API_KEY);
+        } else {
+            alert("API 키가 없으면 사진 분석을 시작할 수 없습니다.");
+            return;
+        }
+    }
+
     const mealInput = document.getElementById('meal-input');
     const analyzeBtn = document.getElementById('analyze-btn');
 
@@ -217,6 +228,12 @@ async function analyzeImageWithGemini(file) {
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.error?.message || errorMessage;
+
+                // 키 유출 에러 발생 시 로컬 스토리지 삭제
+                if (errorMessage.includes("leak") || errorMessage.includes("API_KEY_INVALID")) {
+                    localStorage.removeItem('GEMINI_API_KEY');
+                    errorMessage += "\n\n기존 키가 무효화되었습니다. 다시 시도하여 새 키를 입력해주세요.";
+                }
             } catch (e) {
                 // JSON 파싱 실패 시 기본 에러 메시지 유지
             }
