@@ -18,23 +18,19 @@ function calculate_tdee(height, weight, age, gender, activity_multiplier) {
  * food_data_final.json 파일을 불러와서 사용자 입력 텍스트와 매칭합니다.
  */
 async function localDataAnalysis(mealText, targetCals) {
+    // 1. 이미 로드된 글로벌 변수(FOOD_DATABASE) 사용
     let foodDatabase = [];
 
-    try {
-        // 1. JSON 파일 불러오기
-        const response = await fetch('./food_data_final.json');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        foodDatabase = await response.json();
-    } catch (error) {
-        console.error("데이터 로드 실패:", error);
+    if (typeof FOOD_DATABASE !== 'undefined') {
+        foodDatabase = FOOD_DATABASE;
+    } else {
+        console.error("FOOD_DATABASE가 로드되지 않았습니다.");
         return {
-            "meal_analysis": [{ item: "데이터 연결 오류", amount: "0", calories: 0 }],
+            "meal_analysis": [{ item: "데이터 연결 오류", amount: "1", calories: 0 }],
             "total_ingested_calories": 0,
             "daily_target_calories": targetCals,
             "status": "오류",
-            "coach_feedback": "food_data_final.json 파일을 불러오는 데 실패했습니다. 파일이 존재하지 않거나 브라우저 캐시 문제일 수 있습니다."
+            "coach_feedback": "음식 데이터베이스를 찾을 수 없습니다. food_data.js 파일이 존재하지 않거나 로드되지 않았습니다."
         };
     }
 
