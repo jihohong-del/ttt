@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="background-shape shape1"></div>
     <div class="background-shape shape2"></div>
@@ -28,18 +30,18 @@
             <!-- 사용자 프로필 입력부 -->
             <div class="card profile-card">
                 <h2><i class="fa-regular fa-id-card"></i> 신체 정보</h2>
-                
+
                 <div class="form-grid">
                     <div class="input-group">
                         <label for="height">키 (cm)</label>
                         <input type="number" id="height" placeholder="예: 175" value="175">
                     </div>
-                    
+
                     <div class="input-group">
                         <label for="weight">몸무게 (kg)</label>
                         <input type="number" id="weight" placeholder="예: 70" value="70">
                     </div>
-                    
+
                     <div class="input-group">
                         <label for="age">나이 (세)</label>
                         <input type="number" id="age" placeholder="예: 30" value="30">
@@ -70,10 +72,11 @@
             <div class="card meal-card">
                 <h2><i class="fa-solid fa-utensils"></i> 식사 기록</h2>
                 <div class="input-group full-width">
-                    <label for="meal-input">오늘 어떤 음식을 드셨나요? 편하게 적어주세요. <br><span class="label-desc">예: 치즈버거 세트 먹고 제로콜라 마셨어. 간식으로 초코파이도 하나.</span></label>
+                    <label for="meal-input">오늘 어떤 음식을 드셨나요? 편하게 적어주세요. <br><span class="label-desc">예: 치즈버거 세트 먹고 제로콜라
+                            마셨어. 간식으로 초코파이도 하나.</span></label>
                     <textarea id="meal-input" rows="4" placeholder="당신의 식사를 기록해보세요..."></textarea>
                 </div>
-                
+
                 <button id="analyze-btn" class="primary-btn">
                     <span><i class="fa-solid fa-robot"></i> AI 분석하기</span>
                     <div class="loader hidden" id="btn-loader"></div>
@@ -129,7 +132,8 @@
         </section>
     </main>
 
-    <script src="food_data.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

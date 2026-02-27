@@ -11,54 +11,58 @@ function calculate_tdee(height, weight, age, gender, activity_multiplier) {
     return Math.round((bmr * activity_multiplier) * 100) / 100;
 }
 
+// Supabase 설정
+const SUPABASE_URL = "https://vxzeoyfztxssckictiqn.supabase.co";
+const SUPABASE_KEY = "sb_publishable_QW-xdIZaknLse1MkmvbEOA_GrEOB8yR";
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 /**
  * ---------------------------------------------------------
- * 🟢 LOCAL JSON DATA SERVICE (경량화된 식품 데이터 사용)
+ * 🔵 SUPABASE DATA SERVICE (실시간 DB 연동)
  * ---------------------------------------------------------
- * food_data_final.json 파일을 불러와서 사용자 입력 텍스트와 매칭합니다.
  */
 async function localDataAnalysis(mealText, targetCals) {
-    // 1. 이미 로드된 글로벌 변수(FOOD_DATABASE) 사용
-    let foodDatabase = [];
-
-    if (typeof FOOD_DATABASE !== 'undefined') {
-        foodDatabase = FOOD_DATABASE;
-    } else {
-        console.error("FOOD_DATABASE가 로드되지 않았습니다.");
-        return {
-            "meal_analysis": [{ item: "데이터 연결 오류", amount: "1", calories: 0 }],
-            "total_ingested_calories": 0,
-            "daily_target_calories": targetCals,
-            "status": "오류",
-            "coach_feedback": "음식 데이터베이스를 찾을 수 없습니다. food_data.js 파일이 존재하지 않거나 로드되지 않았습니다."
-        };
-    }
-
-    // 2. 사용자가 입력한 텍스트에서 음식 찾기
     const matchedItems = [];
     let ingestedCals = 0;
 
-    // 간단한 키워드 매칭 로직 (띄어쓰기 무시, 소문자 변환 후 검색)
-    const normalizedInput = mealText.replace(/\s+/g, '').toLowerCase();
+    try {
+        // 1. 전체 데이터베이스 또는 특정 키워드로 검색 (여기서는 전체를 가져와서 필터링하는 방식 유지)
+        const { data: foodDatabase, error } = await _supabase
+            .from('foods')
+            .select('*');
 
-    foodDatabase.forEach(food => {
-        // 데이터셋의 다양한 필드명을 지원합니다.
-        const foodName = food["식품명"] || food["음식명"] || food["name"] || "";
-        const foodAmount = food["영양성분함량기준량"] || food["추정 섭취량"] || food["amount"] || "1인분";
-        const calories = parseFloat(food["칼로리(kcal)"] || food["calories"] || 0);
+        if (error) throw error;
 
-        // 사용자의 식사 기록에 이 음식 이름이 포함되어 있는지 확인
-        if (foodName && normalizedInput.includes(foodName.replace(/\s+/g, '').toLowerCase())) {
-            matchedItems.push({
-                item: foodName,
-                amount: foodAmount,
-                calories: calories
-            });
-            ingestedCals += calories;
-        }
-    });
+        // 2. 사용자가 입력한 텍스트에서 음식 찾기
+        const normalizedInput = mealText.replace(/\s+/g, '').toLowerCase();
 
-    // 만약 매칭된 음식이 하나도 없다면
+        foodDatabase.forEach(food => {
+            const foodName = food.name || "";
+            const foodAmount = food.amount || "1인분";
+            const calories = parseFloat(food.calories || 0);
+
+            // 사용자의 식사 기록에 이 음식 이름이 포함되어 있는지 확인 (공백 제거 후 매칭)
+            if (foodName && normalizedInput.includes(foodName.replace(/\s+/g, '').toLowerCase())) {
+                matchedItems.push({
+                    item: foodName,
+                    amount: foodAmount,
+                    calories: calories
+                });
+                ingestedCals += calories;
+            }
+        });
+
+    } catch (error) {
+        console.error("Supabase 데이터 로드 실패:", error);
+        return {
+            "meal_analysis": [{ item: "데이터베이스 연결 오류", amount: "1", calories: 0 }],
+            "total_ingested_calories": 0,
+            "daily_target_calories": targetCals,
+            "status": "오류",
+            "coach_feedback": "Supabase 데이터베이스를 불러오는 데 실패했습니다. 인터넷 연결이나 DB 설정을 확인해주세요."
+        };
+    }
+
     if (matchedItems.length === 0) {
         return {
             "meal_analysis": [{ item: "인식된 음식 없음", amount: "-", calories: 0 }],
@@ -69,7 +73,6 @@ async function localDataAnalysis(mealText, targetCals) {
         };
     }
 
-    // 3. 상태 및 피드백 생성
     let status = "적정";
     let feedback = "";
 
@@ -93,128 +96,75 @@ async function localDataAnalysis(mealText, targetCals) {
     };
 }
 
-
 /**
  * UI Interaction & Event Listeners
  */
 document.addEventListener('DOMContentLoaded', () => {
     const analyzeBtn = document.getElementById('analyze-btn');
+    const mealInput = document.getElementById('meal-input');
     const resultSection = document.getElementById('result-section');
     const btnLoader = document.getElementById('btn-loader');
-    const btnText = analyzeBtn.querySelector('span');
 
     analyzeBtn.addEventListener('click', async () => {
-        // 입력값 가져오기
+        const mealText = mealInput.value.trim();
+        if (!mealText) {
+            alert("드신 음식을 입력해주세요!");
+            return;
+        }
+
+        // 1. 프로필 정보 가져오기
         const height = parseFloat(document.getElementById('height').value);
         const weight = parseFloat(document.getElementById('weight').value);
         const age = parseInt(document.getElementById('age').value);
         const gender = document.getElementById('gender').value;
         const activity = parseFloat(document.getElementById('activity').value);
-        const mealInput = document.getElementById('meal-input').value.trim();
 
-        if (!mealInput) {
-            alert('식사 기록을 입력해주세요!');
-            return;
-        }
-        if (!height || !weight || !age) {
-            alert('신체 정보를 정확히 입력해주세요!');
-            return;
-        }
+        // 2. TDEE 계산 (권장 칼로리)
+        const targetCals = calculate_tdee(height, weight, age, gender, activity);
 
-        // 로딩 UI 시작
-        analyzeBtn.disabled = true;
-        btnText.style.opacity = '0.3';
+        // UI Loading
         btnLoader.classList.remove('hidden');
+        analyzeBtn.disabled = true;
 
-        try {
-            // 1. TDEE 계산
-            const tdee = calculate_tdee(height, weight, age, gender, activity);
+        // 3. 분석 수행 (Supabase 버전)
+        const analysis = await localDataAnalysis(mealText, targetCals);
 
-            // 2. 로컬 JSON 분석 호출
-            const response = await localDataAnalysis(mealInput, tdee);
+        // UI Update
+        renderResults(analysis);
+        resultSection.classList.remove('hidden');
+        resultSection.scrollIntoView({ behavior: 'smooth' });
 
-            // 3. UI 렌더링
-            renderResults(response, tdee);
+        btnLoader.classList.add('hidden');
+        analyzeBtn.disabled = false;
+    });
+});
 
-            // 결과 섹션 표시 및 스크롤 유도
-            resultSection.classList.remove('hidden');
-            setTimeout(() => {
-                resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+function renderResults(data) {
+    document.getElementById('target-cal').textContent = Math.round(data.daily_target_calories).toLocaleString();
+    document.getElementById('ingested-cal').textContent = Math.round(data.total_ingested_calories).toLocaleString();
 
-        } catch (error) {
-            console.error('분석 중 오류 발생:', error);
-            alert('분석에 실패했습니다. 다시 시도해주세요.');
-        } finally {
-            // 로딩 UI 종료
-            analyzeBtn.disabled = false;
-            btnText.style.opacity = '1';
-            btnLoader.classList.add('hidden');
-        }
+    const remaining = data.daily_target_calories - data.total_ingested_calories;
+    document.getElementById('remaining-cal').textContent = Math.round(remaining).toLocaleString();
+
+    const percent = Math.min(100, Math.round((data.total_ingested_calories / data.daily_target_calories) * 100));
+    document.getElementById('progress-percent').textContent = `${percent}%`;
+    document.getElementById('progress-fill').style.width = `${percent}%`;
+
+    const statusBadge = document.getElementById('status-badge');
+    statusBadge.textContent = data.status;
+    statusBadge.className = 'badge ' + (data.status === '적정' ? 'success' : (data.status === '부족' ? 'warning' : 'danger'));
+
+    const mealList = document.getElementById('meal-list');
+    mealList.innerHTML = '';
+    data.meal_analysis.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <span class="food-name">${item.item}</span>
+            <span class="food-amount">${item.amount}</span>
+            <span class="food-cal">${item.calories} kcal</span>
+        `;
+        mealList.appendChild(li);
     });
 
-    function renderResults(data, tdee) {
-        // 숫자 업데이트
-        document.getElementById('target-cal').innerText = Math.round(tdee).toLocaleString();
-        document.getElementById('ingested-cal').innerText = data.total_ingested_calories.toLocaleString();
-
-        const remaining = Math.round(tdee - data.total_ingested_calories);
-        document.getElementById('remaining-cal').innerText = remaining.toLocaleString();
-
-        // 뱃지 상태 업데이트
-        const badge = document.getElementById('status-badge');
-        badge.innerText = data.status;
-        badge.className = 'badge'; // reset
-        if (data.status === '적정') badge.classList.add('success');
-        else if (data.status === '과다') badge.classList.add('danger');
-        else badge.classList.add('warning');
-
-        // 프로그래스바 업데이트
-        const percentage = Math.min((data.total_ingested_calories / tdee) * 100, 100).toFixed(1);
-        document.getElementById('progress-percent').innerText = `${percentage}%`;
-
-        const progressFill = document.getElementById('progress-fill');
-        progressFill.style.width = `${percentage}%`;
-        progressFill.className = 'progress-fill'; // reset
-
-        // 하루 권장량의 1/3을 한 끼로 가정
-        const mealRatio = data.total_ingested_calories / (tdee / 3);
-        if (mealRatio > 1.2) {
-            progressFill.classList.add('over');
-        } else if (mealRatio > 0.8) {
-            // 적정 (기본색 유지)
-        } else {
-            progressFill.classList.add('warning');
-        }
-
-        // 식사 리스트 렌더링
-        const mealList = document.getElementById('meal-list');
-        mealList.innerHTML = ''; // clear existing
-
-        data.meal_analysis.forEach(item => {
-            const li = document.createElement('li');
-            li.className = 'meal-item';
-            li.innerHTML = `
-                <div class="meal-item-left">
-                    <span class="meal-name">${escapeHTML(item.item)}</span>
-                    <span class="meal-amount">${escapeHTML(item.amount)}</span>
-                </div>
-                <div class="meal-cals">${item.calories} kcal</div>
-            `;
-            mealList.appendChild(li);
-        });
-
-        // 코치 피드백 렌더링
-        document.getElementById('coach-text').innerText = data.coach_feedback;
-    }
-
-    // XSS 방지 유틸
-    function escapeHTML(str) {
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-});
+    document.getElementById('coach-text').textContent = data.coach_feedback;
+}
