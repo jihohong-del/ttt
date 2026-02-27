@@ -77,10 +77,26 @@
                     <textarea id="meal-input" rows="4" placeholder="당신의 식사를 기록해보세요..."></textarea>
                 </div>
 
-                <button id="analyze-btn" class="primary-btn">
-                    <span><i class="fa-solid fa-robot"></i> AI 분석하기</span>
-                    <div class="loader hidden" id="btn-loader"></div>
-                </button>
+                <div class="input-actions">
+                    <button id="analyze-btn" class="primary-btn">
+                        <span><i class="fa-solid fa-robot"></i> AI 분석하기</span>
+                        <div class="loader hidden" id="btn-loader"></div>
+                    </button>
+                    <button id="camera-btn" class="secondary-btn">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>사진 올리기</span>
+                    </button>
+                </div>
+
+                <!-- 이미지 미리보기 영역 -->
+                <div id="image-preview-container" class="image-preview-container hidden">
+                    <div class="preview-wrapper">
+                        <img id="image-preview" src="" alt="식단 사진 미리보기">
+                        <button id="remove-img-btn" class="remove-btn"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+
+                <input type="file" id="image-upload" accept="image/*" class="hidden">
             </div>
         </section>
 

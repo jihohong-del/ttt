@@ -100,15 +100,51 @@ async function localDataAnalysis(mealText, targetCals) {
  * UI Interaction & Event Listeners
  */
 document.addEventListener('DOMContentLoaded', () => {
-    const analyzeBtn = document.getElementById('analyze-btn');
-    const mealInput = document.getElementById('meal-input');
-    const resultSection = document.getElementById('result-section');
-    const btnLoader = document.getElementById('btn-loader');
+    const cameraBtn = document.getElementById('camera-btn');
+    const imageUpload = document.getElementById('image-upload');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const imagePreview = document.getElementById('image-preview');
+    const removeImgBtn = document.getElementById('remove-img-btn');
+
+    // 카메라 버튼 클릭 시 파일 선택창 열기
+    cameraBtn.addEventListener('click', () => {
+        imageUpload.click();
+    });
+
+    // 파일 선택 시 프리뷰 표시
+    imageUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                imagePreview.src = event.target.result;
+                imagePreviewContainer.classList.remove('hidden');
+
+                // 사진을 올리면 텍스트 입력창에 안내 메시지 표시 (선택사항)
+                if (!mealInput.value) {
+                    mealInput.placeholder = "사진을 분석 중입니다... 잠시만 기다려주세요.";
+                }
+
+                // [Mock] 사진 분석 시뮬레이션
+                mockImageAnalysis(file);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 사진 삭제
+    removeImgBtn.addEventListener('click', () => {
+        imageUpload.value = '';
+        imagePreview.src = '';
+        imagePreviewContainer.classList.add('hidden');
+        mealInput.placeholder = "당신의 식사를 기록해보세요...";
+    });
 
     analyzeBtn.addEventListener('click', async () => {
         const mealText = mealInput.value.trim();
-        if (!mealText) {
-            alert("드신 음식을 입력해주세요!");
+        // 사진이 있고 텍스트가 없는 경우에도 분석이 가능하도록 로직 보완 예정
+        if (!mealText && imagePreviewContainer.classList.contains('hidden')) {
+            alert("드신 음식을 입력하거나 사진을 올려주세요!");
             return;
         }
 
@@ -138,6 +174,22 @@ document.addEventListener('DOMContentLoaded', () => {
         analyzeBtn.disabled = false;
     });
 });
+
+/**
+ * [Mock] 사진 분석 시뮬레이션
+ * 실제 Vision API 연동 전까지 UI 흐름을 위해 사용합니다.
+ */
+function mockImageAnalysis(file) {
+    const mealInput = document.getElementById('meal-input');
+
+    // 분석 중인 느낌을 주기 위한 지연 시간
+    setTimeout(() => {
+        // 실제로는 Vision AI가 이 텍스트를 생성합니다.
+        const mockResults = ["치즈버거", "감자튀김", "콜라"];
+        mealInput.value = mockResults.join(", ");
+        mealInput.placeholder = "사진에서 음식을 찾아냈습니다!";
+    }, 2000);
+}
 
 function renderResults(data) {
     document.getElementById('target-cal').textContent = Math.round(data.daily_target_calories).toLocaleString();
