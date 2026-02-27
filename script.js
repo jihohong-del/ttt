@@ -215,7 +215,8 @@ async function analyzeImageWithGemini(file) {
         const result = await response.json();
 
         if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
-            const aiText = result.candidates[0].content.parts[0].text.trim();
+            // 마크다운(**) 등 불필요한 기호 제거 및 정리
+            const aiText = result.candidates[0].content.parts[0].text.replace(/\*/g, '').trim();
             mealInput.value = aiText;
             mealInput.placeholder = "사진 분석 완료! [AI 분석하기]를 눌러보세요.";
         } else {
