@@ -120,13 +120,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 imagePreview.src = event.target.result;
                 imagePreviewContainer.classList.remove('hidden');
 
-                // 사진을 올리면 텍스트 입력창에 안내 메시지 표시 (선택사항)
-                if (!mealInput.value) {
-                    mealInput.placeholder = "사진을 분석 중입니다... 잠시만 기다려주세요.";
-                }
+                // 사진을 올리면 텍스트 입력창 안내
+                mealInput.value = "";
+                mealInput.placeholder = "AI가 사진 속 음식을 분석 중입니다... 🔍";
 
-                // [Mock] 사진 분석 시뮬레이션
-                mockImageAnalysis(file);
+                // 실제 Gemini Vision API 연동
+                analyzeImageWithGemini(file);
             };
             reader.readAsDataURL(file);
         }
@@ -137,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         imageUpload.value = '';
         imagePreview.src = '';
         imagePreviewContainer.classList.add('hidden');
+        mealInput.value = '';
         mealInput.placeholder = "당신의 식사를 기록해보세요...";
     });
 
@@ -176,19 +176,57 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * [Mock] 사진 분석 시뮬레이션
- * 실제 Vision API 연동 전까지 UI 흐름을 위해 사용합니다.
+ * 📸 Gemini Vision API를 이용한 실제 이미지 분석
  */
-function mockImageAnalysis(file) {
+async function analyzeImageWithGemini(file) {
+    const GEMINI_API_KEY = "AIzaSyCMSZZp8kI88hP_GY_Ul3gpJWK1i_7i-LA";
     const mealInput = document.getElementById('meal-input');
 
-    // 분석 중인 느낌을 주기 위한 지연 시간
-    setTimeout(() => {
-        // 실제로는 Vision AI가 이 텍스트를 생성합니다.
-        const mockResults = ["치즈버거", "감자튀김", "콜라"];
-        mealInput.value = mockResults.join(", ");
-        mealInput.placeholder = "사진에서 음식을 찾아냈습니다!";
-    }, 2000);
+    try {
+        // 1. 파일을 Base64로 변환
+        const base64Data = await fileToBase64(file);
+        const base64Content = base64Data.split(',')[1];
+        const mimeType = file.type;
+
+        // 2. Gemini v1.5 Flash API 호출
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: "당신은 AI 영양사입니다. 이 사진에 있는 음식들을 분석하여 정확한 한국어 음식 명칭만 쉼표(,)로 구분하여 나열해주세요. 예: 제육볶음, 공기밥, 된장찌개. 부연 설명이나 인사는 절대로 하지 마세요." },
+                        { inline_data: { mime_type: mimeType, data: base64Content } }
+                    ]
+                }]
+            })
+        });
+
+        const result = await response.json();
+        const aiText = result.candidates[0].content.parts[0].text.trim();
+
+        // 3. 결과 입력창에 반영
+        mealInput.value = aiText;
+        mealInput.placeholder = "사진 분석 완료!";
+
+    } catch (error) {
+        console.error("Gemini API 호출 실패:", error);
+        mealInput.placeholder = "사진 분석에 실패했습니다. 직접 입력해 주세요.";
+    }
+}
+
+/**
+ * 파일을 Base64로 변환하는 헬퍼 함수
+ */
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
 }
 
 function renderResults(data) {
