@@ -203,57 +203,67 @@ async function analyzeImageWithGemini(file) {
     const originalBtnHTML = analyzeBtn.innerHTML;
     analyzeBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin"></i> 사진 분석 중...</span>';
 
+    // 시도할 후보 모델 리스트 (쿼터 문제 해결을 위한 폴백)
+    const models = ["gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-2.0-flash"];
+    let success = false;
+    let lastError = "";
+
     try {
         const base64Data = await fileToBase64(file);
         const base64Content = base64Data.split(',')[1];
         const mimeType = file.type;
 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [
-                        { text: "당신은 AI 영양사입니다. 이 사진에 있는 음식들을 분석하여 정확한 한국어 음식 명칭만 쉼표(,)로 구분하여 나열해주세요. 예: 제육볶음, 공기밥, 된장찌개. 부연 설명이나 인사는 절대로 하지 마세요." },
-                        { inline_data: { mime_type: mimeType, data: base64Content } }
-                    ]
-                }]
-            })
-        });
-
-        if (!response.ok) {
-            let errorMessage = `HTTP Error ${response.status}`;
+        for (const modelName of models) {
             try {
-                const errorData = await response.json();
-                errorMessage = errorData.error?.message || errorMessage;
+                // v1beta가 보통 호환성이 더 넓습니다.
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
 
-                // 키 유출 에러 발생 시 로컬 스토리지 삭제
-                if (errorMessage.includes("leak") || errorMessage.includes("API_KEY_INVALID")) {
-                    localStorage.removeItem('GEMINI_API_KEY');
-                    errorMessage += "\n\n기존 키가 무효화되었습니다. 다시 시도하여 새 키를 입력해주세요.";
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: "당신은 AI 영양사입니다. 이 사진에 있는 음식들을 분석하여 정확한 한국어 음식 명칭만 쉼표(,)로 구분하여 나열해주세요. 예: 제육볶음, 공기밥, 된장찌개. 부연 설명이나 인사는 절대로 하지 마세요." },
+                                { inline_data: { mime_type: mimeType, data: base64Content } }
+                            ]
+                        }]
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
+                        const aiText = result.candidates[0].content.parts[0].text.replace(/\*/g, '').trim();
+                        mealInput.value = aiText;
+                        mealInput.placeholder = "사진 분석 완료! [AI 분석하기]를 눌러보세요.";
+                        success = true;
+                        break; // 성공 시 루프 종료
+                    }
+                } else {
+                    const errorData = await response.json();
+                    lastError = errorData.error?.message || `HTTP Error ${response.status}`;
+                    console.warn(`${modelName} 시도 실패:`, lastError);
+
+                    // 쿼터나 차단 관련 에러면 즉시 중단하고 알림
+                    if (lastError.includes("leak") || lastError.includes("API_KEY_INVALID")) {
+                        localStorage.removeItem('GEMINI_API_KEY');
+                        throw new Error("API 키가 무효화되었습니다. 다시 입력해 주세요.");
+                    }
                 }
-            } catch (e) {
-                // JSON 파싱 실패 시 기본 에러 메시지 유지
+            } catch (innerError) {
+                lastError = innerError.message;
+                console.warn(`${modelName} 호출 중 예외 발생:`, lastError);
             }
-            throw new Error(errorMessage);
         }
 
-        const result = await response.json();
-
-        if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
-            // 마크다운(**) 등 불필요한 기호 제거 및 정리
-            const aiText = result.candidates[0].content.parts[0].text.replace(/\*/g, '').trim();
-            mealInput.value = aiText;
-            mealInput.placeholder = "사진 분석 완료! [AI 분석하기]를 눌러보세요.";
-        } else {
-            throw new Error("분석 결과가 없습니다.");
+        if (!success) {
+            throw new Error(lastError || "모든 AI 모델 분석 시도에 실패했습니다.");
         }
 
     } catch (error) {
         console.error("Gemini API Error details:", error);
-        alert(`사진 분석 중 오류가 발생했습니다.\n상세내용: ${error.message}\n\n직접 입력해 주시거나 다시 시도해 주세요.`);
+        alert(`사진 분석 중 오류가 발생했습니다.\n상세내용: ${error.message}\n\n도움말: 구글 AI 스튜디오에서 API 키의 쿼터(제한)가 설정되어 있는지 확인해 주세요.`);
         mealInput.placeholder = "분석 실패: 직접 입력을 권장합니다.";
     } finally {
         analyzeBtn.disabled = false;
