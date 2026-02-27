@@ -181,14 +181,18 @@ document.addEventListener('DOMContentLoaded', () => {
 async function analyzeImageWithGemini(file) {
     const GEMINI_API_KEY = "AIzaSyCMSZZp8kI88hP_GY_Ul3gpJWK1i_7i-LA";
     const mealInput = document.getElementById('meal-input');
+    const analyzeBtn = document.getElementById('analyze-btn');
+
+    // 분석 중 UI 업데이트
+    analyzeBtn.disabled = true;
+    const originalBtnHTML = analyzeBtn.innerHTML;
+    analyzeBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin"></i> 사진 분석 중...</span>';
 
     try {
-        // 1. 파일을 Base64로 변환
         const base64Data = await fileToBase64(file);
         const base64Content = base64Data.split(',')[1];
         const mimeType = file.type;
 
-        // 2. Gemini v1.5 Flash API 호출
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
         const response = await fetch(apiUrl, {
@@ -204,16 +208,27 @@ async function analyzeImageWithGemini(file) {
             })
         });
 
-        const result = await response.json();
-        const aiText = result.candidates[0].content.parts[0].text.trim();
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
 
-        // 3. 결과 입력창에 반영
-        mealInput.value = aiText;
-        mealInput.placeholder = "사진 분석 완료!";
+        const result = await response.json();
+
+        if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
+            const aiText = result.candidates[0].content.parts[0].text.trim();
+            mealInput.value = aiText;
+            mealInput.placeholder = "사진 분석 완료! [AI 분석하기]를 눌러보세요.";
+        } else {
+            throw new Error("분석 결과가 없습니다.");
+        }
 
     } catch (error) {
-        console.error("Gemini API 호출 실패:", error);
-        mealInput.placeholder = "사진 분석에 실패했습니다. 직접 입력해 주세요.";
+        console.error("Gemini API Error:", error);
+        alert("사진 분석 중 오류가 발생했습니다. 직접 입력해 주시거나 다시 시도해 주세요.");
+        mealInput.placeholder = "분석 실패: 직접 입력을 권장합니다.";
+    } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = originalBtnHTML;
     }
 }
 
