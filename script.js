@@ -13,16 +13,16 @@ function calculate_tdee(height, weight, age, gender, activity_multiplier) {
 
 /**
  * ---------------------------------------------------------
- * 🟢 LOCAL JSON DATA SERVICE (엑셀 변환 데이터 사용)
+ * 🟢 LOCAL JSON DATA SERVICE (경량화된 식품 데이터 사용)
  * ---------------------------------------------------------
- * combined_food_data.json 파일을 불러와서 사용자 입력 텍스트와 매칭합니다.
+ * food_data_final.json 파일을 불러와서 사용자 입력 텍스트와 매칭합니다.
  */
 async function localDataAnalysis(mealText, targetCals) {
     let foodDatabase = [];
 
     try {
         // 1. JSON 파일 불러오기
-        const response = await fetch('./combined_food_data.json');
+        const response = await fetch('./food_data_final.json');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -34,7 +34,7 @@ async function localDataAnalysis(mealText, targetCals) {
             "total_ingested_calories": 0,
             "daily_target_calories": targetCals,
             "status": "오류",
-            "coach_feedback": "combined_food_data.json 파일을 불러오는 데 실패했습니다. 용량이 너무 크거나 파일이 존재하지 않을 수 있습니다."
+            "coach_feedback": "food_data_final.json 파일을 불러오는 데 실패했습니다. 파일이 존재하지 않거나 브라우저 캐시 문제일 수 있습니다."
         };
     }
 
@@ -46,9 +46,9 @@ async function localDataAnalysis(mealText, targetCals) {
     const normalizedInput = mealText.replace(/\s+/g, '').toLowerCase();
 
     foodDatabase.forEach(food => {
-        // 엑셀의 헤더(열 이름)를 유연하게 지원합니다.
-        const foodName = food["음식명"] || food["name"] || food["식품명"] || "";
-        const foodAmount = food["추정 섭취량"] || food["amount"] || food["영양성분함량기준량"] || "1인분";
+        // 데이터셋의 다양한 필드명을 지원합니다.
+        const foodName = food["식품명"] || food["음식명"] || food["name"] || "";
+        const foodAmount = food["영양성분함량기준량"] || food["추정 섭취량"] || food["amount"] || "1인분";
         const calories = parseFloat(food["칼로리(kcal)"] || food["calories"] || 0);
 
         // 사용자의 식사 기록에 이 음식 이름이 포함되어 있는지 확인
@@ -69,12 +69,11 @@ async function localDataAnalysis(mealText, targetCals) {
             "total_ingested_calories": 0,
             "daily_target_calories": targetCals,
             "status": "알 수 없음",
-            "coach_feedback": "입력하신 식사 내용에서 데이터베이스에 등록된 음식을 찾지 못했습니다. 데이터베이스에 해당 음식이 있는지 확인해주세요."
+            "coach_feedback": "입력하신 식사 내용에서 데이터베이스에 등록된 음식을 찾지 못했습니다. 보다 구체적인 음식명을 입력해보세요."
         };
     }
 
     // 3. 상태 및 피드백 생성
-    const remainingCals = targetCals - ingestedCals;
     let status = "적정";
     let feedback = "";
 
@@ -83,7 +82,7 @@ async function localDataAnalysis(mealText, targetCals) {
         feedback = `한 끼 식사로 너무 많은 칼로리를 섭취하셨습니다 (일일 권장량의 ${Math.round((ingestedCals / targetCals) * 100)}%). 가벼운 산책을 통해 소화를 돕고, 다음 식사는 가볍게 드시는 것을 권장합니다.`;
     } else if (ingestedCals < targetCals * 0.1) {
         status = "부족";
-        feedback = "권장 칼로리에 비해 식사량이 적습니다. 영양소 보충을 위해 간식을 챙겨 드세요.";
+        feedback = "권장 칼로리에 비해 식사량이 적습니다. 영양소 보충을 위해 단백질이 포함된 간식을 보완해 보세요.";
     } else {
         status = "적정";
         feedback = "좋습니다! 한 끼 식사로 매우 적절한 양과 칼로리를 섭취하셨습니다. 현재의 식습관을 잘 유지해주세요.";
@@ -97,6 +96,7 @@ async function localDataAnalysis(mealText, targetCals) {
         "coach_feedback": feedback
     };
 }
+
 
 /**
  * UI Interaction & Event Listeners
@@ -134,9 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. TDEE 계산
             const tdee = calculate_tdee(height, weight, age, gender, activity);
 
-            // 2. AI 분석 호출 (현재는 로컬 Mock)
-            // 나중에 이곳에서 실제 서버 API (예: fetch('/api/analyze', { method: 'POST', body: JSON.stringify(...) })) 를 호출하도록 수정
-            const response = await mockAIAnalysis(mealInput, tdee);
+            // 2. 로컬 JSON 분석 호출
+            const response = await localDataAnalysis(mealInput, tdee);
 
             // 3. UI 렌더링
             renderResults(response, tdee);
