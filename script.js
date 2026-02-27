@@ -197,7 +197,7 @@ async function analyzeImageWithGemini(file) {
         const base64Content = base64Data.split(',')[1];
         const mimeType = file.type;
 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
         const response = await fetch(apiUrl, {
             method: 'POST',
