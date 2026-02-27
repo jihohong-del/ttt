@@ -654,6 +654,29 @@ textarea {
     background: #FEE2E2;
 }
 
+.history-feedback {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--border-color);
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.5;
+    text-align: center;
+    transition: color 0.3s ease;
+}
+
+.history-feedback.success {
+    color: var(--status-proper);
+}
+
+.history-feedback.danger {
+    color: var(--status-excessive);
+}
+
+.history-feedback.warning {
+    color: var(--status-insufficient);
+}
+
 /* Mobile Responsiveness Extra */
 @media (max-width: 600px) {
     .history-item {

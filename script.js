@@ -385,6 +385,7 @@ function renderMealLog() {
     const historyList = document.getElementById('history-list');
     const totalBadge = document.getElementById('total-consumed-badge');
     const emptyMsg = document.querySelector('.empty-msg');
+    const historyFeedback = document.getElementById('history-feedback');
 
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
@@ -397,6 +398,8 @@ function renderMealLog() {
         historyList.innerHTML = '';
         emptyMsg.classList.remove('hidden');
         totalBadge.textContent = '총 0 kcal';
+        historyFeedback.innerHTML = '';
+        historyFeedback.classList.remove('success', 'warning', 'danger');
         return;
     }
 
@@ -427,7 +430,7 @@ function renderMealLog() {
 
     totalBadge.textContent = `총 ${totalCals.toLocaleString()} kcal`;
 
-    // 🌟 추가: 총 칼로리에 따른 색상 동기화
+    // 🌟 추가: 총 칼로리에 따른 색상 및 피드백 문구 동기화
     const height = parseFloat(document.getElementById('height').value);
     const weight = parseFloat(document.getElementById('weight').value);
     const age = parseInt(document.getElementById('age').value);
@@ -436,13 +439,20 @@ function renderMealLog() {
     const targetCals = calculate_tdee(height, weight, age, gender, activity);
 
     totalBadge.classList.remove('success', 'warning', 'danger', 'secondary');
+    historyFeedback.classList.remove('success', 'warning', 'danger');
 
     if (totalCals > targetCals * 1.1) {
         totalBadge.classList.add('danger'); // 과다
+        historyFeedback.classList.add('danger');
+        historyFeedback.textContent = "과다하게 먹었어요 내일은 가볍게 드시고 운동으로 소화시키세요.";
     } else if (totalCals < targetCals * 0.8) {
         totalBadge.classList.add('warning'); // 부족
+        historyFeedback.classList.add('warning');
+        historyFeedback.textContent = "식사량이 부족하면 에너지가 부족해 하루가 망칠수있으니 꼭 알맞게 드세요.";
     } else {
         totalBadge.classList.add('success'); // 적정
+        historyFeedback.classList.add('success');
+        historyFeedback.textContent = "하루 동안 딱 알맞게 드셨네요.";
     }
 }
 
